@@ -1,0 +1,676 @@
+=== begin № 061124 =========================================================================================
++++ 2 Связь один ко многим LARAVEL (One-to-Many)
+первоисточник https://www.youtube.com/watch?v=B4KVpw7-xAM&list=PLze7bMjv1CYsD2Y5jQ4WcSCqCze6eCjop&index=2
+============================================================================================================
+============================================================================================================
+----------------- one to many --------------
+1.
+cd projects/
+	aleksandr@E7240:~/projects$
+
+2.
+mkdir laravel10-sql-one-to-many
+
+3.
+	aleksandr@E7240:~/projects$
+cd laravel10-sql-one-to-many/
+
+4.
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$
+composer create-project laravel/laravel:^10 laravel10
+
+5.
+путь к файлу /home/aleksandr/projects/laravel10-sql-one-to-many/laravel10/.env
+
+DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_HOST=E7240
+DB_HOST=mysqldb
+DB_PORT=3306
+DB_DATABASE=ale11
+DB_USERNAME=root
+DB_PASSWORD=secret
+
+6.
+создаем файл laravel.log
+в папке laravel10/storage/logs/laravel.log
+
+7.
+Устанавливаем docker, docker-compose (в интернете инстукция)
+в проекте уже установленны версии
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$ 
+docker -v
+
+	Docker version 26.1.4, build 5650f9b
+
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$ 
+docker-compose -v
+
+	Docker Compose version v2.12.2
+
+
+8.
+	
+------------------------------------------------------------------------------------
+--- создаем Файл docker-compose.yml ------------------------------------------------
+--- путь /home/aleksandr/projects/laravel10-sql-one-to-many/docker-compose.yml
+
+
+version: '3.8'
+services:
+  webserver:
+    container_name: PHP1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./laravel10:/var/www/html
+    ports:
+      - 8000:80
+    depends_on:
+      - mysqldb
+
+  mysqldb:
+    container_name: mysql1
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: ale11
+      # MYSQL_USER: root
+      # MYSQL_PASSWORD: secret
+    volumes:
+      - ./laravel10/mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    container_name: phpmyadmin1
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - mysqldb
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysqldb
+      MYSQL_ROOT_PASSWORD: secret
+      
+      
+--------------------------------------------------------------------------------
+--- создаем Файл Dockerfile ----------------------------------------------------
+--- путь к файлу /home/aleksandr/projects/laravel10-sql-one-to-many/Dockerfile
+
+
+# Использовать официальный образ PHP с предустановленным Apache
+FROM php:8.2-apache
+
+# Обновление пакетного менеджера и установка MySQL клиента
+RUN apt-get update && apt-get install -y default-mysql-client
+
+# Установить PDO и PDO MySQL расширения PHP
+RUN docker-php-ext-install pdo pdo_mysql \
+    && docker-php-ext-enable pdo_mysql
+
+# Включить модули Apache
+RUN a2enmod rewrite
+
+# Установить рабочий каталог в /var/www/html
+WORKDIR /var/www/html
+
+# Скопировать каталог вашего проекта Laravel
+# если Dockerfile и docker-compose.yml в каталоге laravel10
+# COPY ../laravel10 .
+
+# Скопировать каталог вашего проекта Laravel
+# если Dockerfile, docker-compose.yml и laravel10 в одном общем каталоге
+COPY ./laravel10 /var/www/html
+
+# Установить Composer (если еще не установлен)
+# RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Установить зависимости проекта
+# На локальном установит и перенесет в контейнер
+# RUN composer install
+
+# Настроить разрешения для каталогов storage и bootstrap/cache
+# RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Открыть порт (при необходимости изменить)
+EXPOSE 80
+
+# Использовать Apache в качестве точки входа по умолчанию
+CMD ["apache2-foreground"]
+
+
+-------------------------------------------------------------------------------------
+--- файл .htaccess ------------------------------------------------------------------
+--- путь /home/aleksandr/projects/laravel10-sql-one-to-many/laravel10/.htaccess
+
+
+# run laravel/public/index.php
+
+<IfModule mod_rewrite.c>
+    Options -MultiViews
+    RewriteEngine On
+    RewriteCond %{REQUEST_URL} !^/public/
+    RewriteRule ^(.*)$ /public/$1 [L,QSA]
+</IfModule>
+
+# run laravel/index.php
+
+# RewriteEngine On
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^(.*)$ index.php [QSA,L]
+
+# RewriteRule ^(.*)$ /any_index/index.php [QSA,L]
+
+
+9.
+cd laravel10/
+		Даем разрешения и права доступа на папки и файлы рекурсивно
+	sudo chmod 777 -R storage/
+		на запрос - вводим пароль
+	sudo chmod 777 -R bootstrap/cache
+
+	или одной командой
+sudo chmod -R 777 storage bootstrap/cache
+
+10.
+	создать символическую ссылку из каталога public/storage на каталог storage/app/public для доступа к файлам, сохраненным в каталоге storage/app/public, через веб-браузер.
+php artisan storage:link
+
+
+11.
+--- +++
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+cd ..
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$
+
+	командой собираем и запускаем контейнеры (build используем при создании, обычно 1 раз, или изменении конфигурацию контейнеров)
+docker-compose up --build -d
+
+Дальше используем эти команды
+		запуск
+	docker-compose up -d
+		останов
+	docker-compose down
+
+---
+
+12.
+cd laravel10/
+	!!! Даем права доступа папке mysql-data и файлам по пути laravel10/mysql-data
+sudo chmod -R 777 mysql-data
+
+
+13.
+================================
++++Вход в Базу Данных
+
+http://localhost:8081/
+root
+secret
+================================
+
+
+14.
+cd laravel10/
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+
+15.
+php artisan make:model Author -mf
+
+   INFO  Model [app/Models/Author.php] created successfully.
+
+   INFO  Factory [database/factories/AuthorFactory.php] created successfully.
+
+   INFO  Migration [database/migrations/2024_06_11_133923_create_authors_table.php] created successfully.
+
+--- полный путь /home/aleksandr/projects/laravel10-sql-one-to-many/laravel10/app/Models/Author.php
+--- относительный путь laravel10/app/Models/Author.php
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Author extends Model
+{
+    use HasFactory;
+    //каждому автору присвоит несколько книг
+    public function books(){
+        return $this->hasMany(Book::class);
+    }
+}
+
+--- путь к файлу  laravel10/database/factories/AuthorFactory.php
+
+<?php
+
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Author>
+ */
+class AuthorFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'name'=>'Author ' . $this->faker->name,
+        ];
+    }
+}
+
+--- laravel10/database/migrations/2024_06_11_133923_create_authors_table.php
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('authors', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('authors');
+    }
+};
+
+
+---
+
+
+16.
+	Работа с проектом в папке /laravel10$
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+
+	Работа с git hub и docker-compose в каталоге
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$
+
+---
+	Вспомогательно Убрать длинный путь
+	Командная строка -- желто-коричневый -- зеленый -- белый 3-и символа поддиректории
+export PS1="\[\e[33m\]\$(basename \$PWD | rev | cut -c 1-3 | rev)\[\e[32m\]\$\[\e[0m\] "
+
+было ---> aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+
+стало ---> l10$
+---
+
+17.
+	l10$
+php artisan make:model Book -mf
+
+   INFO  Model [app/Models/Book.php] created successfully.
+
+   INFO  Factory [database/factories/BookFactory.php] created successfully.
+
+   INFO  Migration [database/migrations/2024_06_11_134922_create_books_table.php] created successfully
+
+
+
+--- laravel10/app/Models/Book.php
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Book extends Model
+{
+    use HasFactory;
+
+    // каждой книге даст автора
+    public function author(){
+        return $this->belongsTo(Author::class);
+    }
+
+}
+
+
+
+--- laravel10/database/factories/BookFactory.php
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Book extends Model
+{
+    use HasFactory;
+
+    // каждой книге даст автора
+    public function author(){
+        return $this->belongsTo(Author::class);
+    }
+
+}
+
+
+
+--- laravel10/database/migrations/2024_06_11_134922_create_books_table.php
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('books', function (Blueprint $table) {
+            $table->id();
+            $table->string('title')->unique();
+            $table->foreignId('author_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('books');
+    }
+};
+
+---
+18.
+DB_HOST=E7240 - хост локального компьютера, узнать можно командой hostname
+	l10$ 
+hostname
+
+	E7240
+У каждого свой хост !!!
+
+!!! В Docker команда php artisan migrate без хоста DB_HOST=E7240 php artisan migrate выдает ошибку
+
+
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+DB_HOST=E7240 php artisan migrate
+
+   INFO  Preparing database.
+
+  Creating migration table ....................................................... 79ms DONE
+
+   INFO  Running migrations.
+
+  2014_10_12_000000_create_users_table .......................................... 124ms DONE
+  2014_10_12_100000_create_password_reset_tokens_table ........................... 71ms DONE
+  2019_08_19_000000_create_failed_jobs_table .................................... 159ms DONE
+  2019_12_14_000001_create_personal_access_tokens_table ......................... 226ms DONE
+  2024_06_11_133923_create_authors_table ........................................ 207ms DONE
+  2024_06_11_134922_create_books_table .......................................... 704ms DONE
+
+19.
+запуск проекта после перестарта компа
+	пути к каталогам
+cd projects/laravel10-sql-one-to-many/
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many$
+
+docker-compose up -d
+
+cd laravel10/
+	aleksandr@E7240:~/projects/laravel10-sql-one-to-many/laravel10$
+
+	настройка для терминала - Сократить длинный путь
+	Командная строка -- желто-коричневый -- зеленый -- белый 3-и символа поддиректории
+export PS1="\[\e[33m\]\$(basename \$PWD | rev | cut -c 1-3 | rev)\[\e[32m\]\$\[\e[0m\] "
+
+
+20.
+
+--- laravel10/database/seeders/DatabaseSeeder.php
+<?php
+
+namespace Database\Seeders;
+
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Book;
+use App\Models\Author;
+use Illuminate\Database\Seeder;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        // \App\Models\User::factory(10)->create();
+
+        // \App\Models\User::factory()->create([
+        //     'name' => 'Test User',
+        //     'email' => 'test@example.com',
+        // ]);
+
+        // Author::factory(5)->create();
+        Book::factory(50)->create();
+    }
+}
+
+---
+запускал со строкой Author::factory(5)->create();
+потом со строкой Book::factory(50)->create();
+---
+
+(php artisan db:seed)
+	l10$
+DB_HOST=E7240 php artisan db:seed
+
+   INFO  Seeding database.
+
+21. ДОПОЛНИТЕЛЬНО, sql-запрос на переименовывание id по порядку, после удаления, добавления записей
+-- Создание временной таблицы для хранения соответствий старых и новых ID
+CREATE TEMPORARY TABLE temp_ids AS
+SELECT id, (@rownum := @rownum + 1) AS new_id
+FROM authors, (SELECT @rownum := 0) AS r
+ORDER BY id;
+
+-- Обновление оригинальной таблицы с использованием временной таблицы
+UPDATE authors AS a
+JOIN temp_ids AS t ON a.id = t.id
+SET a.id = t.new_id;
+
+-- Удаление временной таблицы
+DROP TEMPORARY TABLE temp_ids;
+
+22.
+	l10$
+DB_HOST=E7240 php artisan db:seed
+
+   INFO  Seeding database.
+
+
+   ------
+===  ниже подключение контроллеров (в видео первоисточника этого нет)
+23.
+	команды
+	php artisan make:controller AuthorController
+	php artisan make:controller BookController
+
+l10$
+php artisan make:controller AuthorController
+
+   INFO  Controller [app/Http/Controllers/AuthorController.php] created successfully.
+
+l10$
+php artisan make:controller BookController
+
+   INFO  Controller [app/Http/Controllers/BookController.php] created successfully.
+
+24.
+
+-
+
+25.
+--- laravel10/app/Http/Controllers/AuthorController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Author;
+
+class AuthorController extends Controller
+{
+    public function showAuthorsWithBooks()
+    {
+        $authors = Author::all();
+
+        $output = '';
+        foreach ($authors as $author) {
+            $output .= 'Author name: ' . $author['name'] . '<br>';
+            $output .= 'Author books: ';
+            foreach ($author->books as $book) {
+                $output .= $book['title'] . '<br>';
+            }
+            $output .= '<br>------------<br>';
+        }
+
+        return $output;
+    }
+}
+
+
+26.
+--- laravel10/app/Http/Controllers/BookController.php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Book;
+
+class BookController extends Controller
+{
+    public function showBooksWithAuthors()
+    {
+        $books = Book::all();
+
+        $output = '';
+        foreach ($books as $book) {
+            $output .= 'Book title: ' . $book['title'] . '<br>';
+            $output .= 'Author: '. $book->author['name'] .'<br>';
+            $output .= '<br>------------<br>';
+        }
+
+        return $output;
+    }
+}
+
+27.
+
+use App\Http\Controllers\AuthorController;
+use App\Http\Controllers\BookController;
+
+// Маршрут для отображения авторов и их книг
+Route::get('/authors-with-books', [AuthorController::class, 'showAuthorsWithBooks']);
+
+// Маршрут для отображения книг и их авторов
+Route::get('/books-with-authors', [BookController::class, 'showBooksWithAuthors']);
+
+
+--- laravel10/routes/web.php
+
+<?php
+
+use App\Models\Book;
+use App\Models\Author;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BookController;
+use App\Http\Controllers\AuthorController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
+*/
+
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
+Route::get('/', function () {
+//--- без контроллера, как пример
+//--- hasMany -----------------
+
+    // $authors = Author::all();
+
+    // foreach ($authors as $author) {
+    //     echo 'Author name ' . $author['name'] . '<br>';
+    //     echo 'Author books: ';
+    //     foreach ($author->books as $book) {
+    //         echo $book['title'] . '<br>';
+    //     }
+    //     echo '<br>------------<br>';
+    // }
+
+//--- belongsTo -----------------
+
+    // $books = Book::all();
+
+    // foreach ($books as $book) {
+    //     echo 'Book title: ' . $book['title'] . '<br>';
+    //     echo 'Author: '. $book->author['name'] .'<br>';
+    //     echo '<br>------------<br>';
+    // }
+});
+
+// Маршрут для отображения авторов и их книг
+Route::get('/authors-with-books', [AuthorController::class, 'showAuthorsWithBooks']);
+
+// Маршрут для отображения книг и их авторов
+Route::get('/books-with-authors', [BookController::class, 'showBooksWithAuthors']);
+
+// http://localhost:8000/books-with-authors
+// http://localhost:8000/public/authors-with-books
+
+28.
+
+	запуск в браузере на локальном сервере
+http://localhost:8000/books-with-authors
+http://localhost:8000/authors-with-books
+
+=== end № 061124 =========================================================================================
+
