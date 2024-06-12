@@ -38,13 +38,13 @@ Route::get('/', function () {
 
 //--- belongsTo -----------------
 
-    // $books = Book::all();
+    $books = Book::all();
 
-    // foreach ($books as $book) {
-    //     echo 'Book title: ' . $book['title'] . '<br>';
-    //     echo 'Author: '. $book->author['name'] .'<br>';
-    //     echo '<br>------------<br>';
-    // }
+    foreach ($books as $book) {
+        echo 'Book title: ' . $book['title'] . '<br>';
+        echo 'Author: '. $book->author['name'] .'<br>';
+        echo '<br>------------<br>';
+    }
 });
 
 // Маршрут для отображения авторов и их книг
